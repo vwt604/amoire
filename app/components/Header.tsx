@@ -17,6 +17,48 @@ interface HeaderProps {
 
 type Viewport = 'desktop' | 'mobile';
 
+const headerStyle: React.CSSProperties = {
+  background: '#F4EFE8',
+  borderBottom: '1px solid #E0D6CA',
+  display: 'flex',
+  alignItems: 'center',
+  height: '64px',
+  padding: '0 2rem',
+  position: 'sticky',
+  top: 0,
+  zIndex: 10,
+};
+
+const logoStyle: React.CSSProperties = {
+  fontFamily: 'Cormorant Garamond, serif',
+  fontSize: '1.5rem',
+  fontWeight: 400,
+  letterSpacing: '0.08em',
+  color: '#1C1714',
+  textDecoration: 'none',
+};
+
+const navLinkStyle: React.CSSProperties = {
+  fontFamily: 'DM Sans, sans-serif',
+  fontSize: '0.65rem',
+  letterSpacing: '0.2em',
+  textTransform: 'uppercase',
+  color: '#1C1714',
+  textDecoration: 'none',
+};
+
+const ctaStyle: React.CSSProperties = {
+  fontFamily: 'DM Sans, sans-serif',
+  fontSize: '0.65rem',
+  letterSpacing: '0.2em',
+  textTransform: 'uppercase',
+  color: '#1C1714',
+  textDecoration: 'none',
+  cursor: 'pointer',
+  background: 'none',
+  border: 'none',
+};
+
 export function Header({
   header,
   isLoggedIn,
@@ -25,9 +67,9 @@ export function Header({
 }: HeaderProps) {
   const {shop, menu} = header;
   return (
-    <header className="header">
-      <NavLink prefetch="intent" to="/" style={activeLinkStyle} end>
-        <strong>{shop.name}</strong>
+    <header style={headerStyle}>
+      <NavLink prefetch="intent" to="/" style={{textDecoration: 'none'}}>
+        <span style={logoStyle}>{shop?.name || 'Amoire'}</span>
       </NavLink>
       <HeaderMenu
         menu={menu}
@@ -51,46 +93,56 @@ export function HeaderMenu({
   viewport: Viewport;
   publicStoreDomain: HeaderProps['publicStoreDomain'];
 }) {
-  const className = `header-menu-${viewport}`;
   const {close} = useAside();
 
-  return (
-    <nav className={className} role="navigation">
-      {viewport === 'mobile' && (
-        <NavLink
-          end
-          onClick={close}
-          prefetch="intent"
-          style={activeLinkStyle}
-          to="/"
-        >
-          Home
-        </NavLink>
-      )}
-      {(menu || FALLBACK_HEADER_MENU).items.map((item) => {
-        if (!item.url) return null;
-
-        // if the url is internal, we strip the domain
-        const url =
-          item.url.includes('myshopify.com') ||
-          item.url.includes(publicStoreDomain) ||
-          item.url.includes(primaryDomainUrl)
-            ? new URL(item.url).pathname
-            : item.url;
-        return (
+  if (viewport === 'mobile') {
+    return (
+      <nav
+        style={{
+          display: 'flex',
+          flexDirection: 'column',
+          gap: '1.5rem',
+          padding: '2rem',
+        }}
+        role="navigation"
+      >
+        {AMOIRE_NAV.map((item) => (
           <NavLink
-            className="header-menu-item"
-            end
-            key={item.id}
+            key={item.url}
+            to={item.url}
             onClick={close}
-            prefetch="intent"
-            style={activeLinkStyle}
-            to={url}
+            style={navLinkStyle}
           >
             {item.title}
           </NavLink>
-        );
-      })}
+        ))}
+      </nav>
+    );
+  }
+
+  return (
+    <nav
+      style={{
+        display: 'none',
+        gap: '2rem',
+        marginLeft: '3rem',
+        alignItems: 'center',
+      }}
+      className="header-menu-desktop"
+      role="navigation"
+    >
+      {AMOIRE_NAV.map((item) => (
+        <NavLink
+          key={item.url}
+          to={item.url}
+          style={({isActive}) => ({
+            ...navLinkStyle,
+            color: isActive ? '#3A4A38' : '#1C1714',
+          })}
+        >
+          {item.title}
+        </NavLink>
+      ))}
     </nav>
   );
 }
@@ -100,16 +152,16 @@ function HeaderCtas({
   cart,
 }: Pick<HeaderProps, 'isLoggedIn' | 'cart'>) {
   return (
-    <nav className="header-ctas" role="navigation">
+    <nav
+      style={{
+        display: 'flex',
+        alignItems: 'center',
+        gap: '1.5rem',
+        marginLeft: 'auto',
+      }}
+      role="navigation"
+    >
       <HeaderMenuMobileToggle />
-      <NavLink prefetch="intent" to="/account" style={activeLinkStyle}>
-        <Suspense fallback="Sign in">
-          <Await resolve={isLoggedIn} errorElement="Sign in">
-            {(isLoggedIn) => (isLoggedIn ? 'Account' : 'Sign in')}
-          </Await>
-        </Suspense>
-      </NavLink>
-      <SearchToggle />
       <CartToggle cart={cart} />
     </nav>
   );
@@ -121,17 +173,10 @@ function HeaderMenuMobileToggle() {
     <button
       className="header-menu-mobile-toggle reset"
       onClick={() => open('mobile')}
+      style={ctaStyle}
+      aria-label="Open menu"
     >
-      <h3>☰</h3>
-    </button>
-  );
-}
-
-function SearchToggle() {
-  const {open} = useAside();
-  return (
-    <button className="reset" onClick={() => open('search')}>
-      Search
+      Menu
     </button>
   );
 }
@@ -141,10 +186,9 @@ function CartBadge({count}: {count: number | null}) {
   const {publish, shop, cart, prevCart} = useAnalytics();
 
   return (
-    <a
-      href="/cart"
-      onClick={(e) => {
-        e.preventDefault();
+    <button
+      style={ctaStyle}
+      onClick={() => {
         open('cart');
         publish('cart_viewed', {
           cart,
@@ -153,9 +197,10 @@ function CartBadge({count}: {count: number | null}) {
           url: window.location.href || '',
         } as CartViewPayload);
       }}
+      aria-label={`Open bag, ${count ?? 0} items`}
     >
-      Cart {count === null ? <span>&nbsp;</span> : count}
-    </a>
+      Bag{count !== null && count > 0 ? ` (${count})` : ''}
+    </button>
   );
 }
 
@@ -175,57 +220,8 @@ function CartBanner() {
   return <CartBadge count={cart?.totalQuantity ?? 0} />;
 }
 
-const FALLBACK_HEADER_MENU = {
-  id: 'gid://shopify/Menu/199655587896',
-  items: [
-    {
-      id: 'gid://shopify/MenuItem/461609500728',
-      resourceId: null,
-      tags: [],
-      title: 'Collections',
-      type: 'HTTP',
-      url: '/collections',
-      items: [],
-    },
-    {
-      id: 'gid://shopify/MenuItem/461609533496',
-      resourceId: null,
-      tags: [],
-      title: 'Blog',
-      type: 'HTTP',
-      url: '/blogs/journal',
-      items: [],
-    },
-    {
-      id: 'gid://shopify/MenuItem/461609566264',
-      resourceId: null,
-      tags: [],
-      title: 'Policies',
-      type: 'HTTP',
-      url: '/policies',
-      items: [],
-    },
-    {
-      id: 'gid://shopify/MenuItem/461609599032',
-      resourceId: 'gid://shopify/Page/92591030328',
-      tags: [],
-      title: 'About',
-      type: 'PAGE',
-      url: '/pages/about',
-      items: [],
-    },
-  ],
-};
-
-function activeLinkStyle({
-  isActive,
-  isPending,
-}: {
-  isActive: boolean;
-  isPending: boolean;
-}) {
-  return {
-    fontWeight: isActive ? 'bold' : undefined,
-    color: isPending ? 'grey' : 'black',
-  };
-}
+const AMOIRE_NAV = [
+  {title: 'Sets', url: '/collections/sets'},
+  {title: 'Individual', url: '/collections/all'},
+  {title: 'Concierge', url: '/concierge'},
+];

@@ -74,6 +74,7 @@ function FeaturedCollection({
 }: {
   collection: FeaturedCollectionFragment;
 }) {
+  console.log('🚀 ~ collection:', collection);
   if (!collection) return null;
   const image = collection?.image;
   return (
