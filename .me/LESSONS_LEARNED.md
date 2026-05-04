@@ -1,1 +1,0 @@
-- Oxygen hosting is only for paid plans
